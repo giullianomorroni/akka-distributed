@@ -6,7 +6,6 @@ import akka.contrib.pattern.DistributedPubSubExtension;
 import akka.contrib.pattern.DistributedPubSubMediator;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import br.com.hugme.akka.beans.work.Master;
 import br.com.hugme.akka.beans.work.WorkResult;
 
 public class WorkResultConsumer extends UntypedActor {

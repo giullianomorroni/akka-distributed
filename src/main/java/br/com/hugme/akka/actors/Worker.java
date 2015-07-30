@@ -2,12 +2,7 @@ package br.com.hugme.akka.actors;
 
 import java.util.UUID;
 
-import akka.actor.ActorRef;
-import akka.actor.Cancellable;
-import akka.actor.Props;
-import akka.actor.ReceiveTimeout;
-import akka.actor.Terminated;
-import akka.actor.UntypedActor;
+import akka.actor.*;
 import akka.contrib.pattern.ClusterClient.SendToAll;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
@@ -88,9 +83,9 @@ public class Worker extends UntypedActor {
 //	}
  
 	public void onReceive(Object message) {
+		log.info("Worker Got work: {}", message);
 		unhandled(message);
 	}
-
 
 	private final Procedure<Object> idle = new Procedure<Object>() {
 		public void apply(Object message) {
@@ -98,9 +93,9 @@ public class Worker extends UntypedActor {
 				sendToMaster(new WorkerRequestsWork(workerId));
 			else if (message instanceof Work) {
 				Work work = (Work) message;
-				log.info("Got work: {}", work.job);
-				currentWorkId = work.workId;
-				workExecutor.tell(work.job, getSelf());
+				log.info("Got work: {}", work.getMessage());
+				currentWorkId = work.getId();
+				workExecutor.tell(work, getSelf());
 				getContext().become(working);
 			} else
 				unhandled(message);

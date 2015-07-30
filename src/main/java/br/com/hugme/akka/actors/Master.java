@@ -1,4 +1,4 @@
-package br.com.hugme.akka.beans.work;
+package br.com.hugme.akka.actors;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -18,6 +18,16 @@ import akka.persistence.UntypedPersistentActor;
 import br.com.hugme.akka.beans.state.Ack;
 import br.com.hugme.akka.beans.state.Busy;
 import br.com.hugme.akka.beans.state.Idle;
+import br.com.hugme.akka.beans.work.Work;
+import br.com.hugme.akka.beans.work.WorkAccepted;
+import br.com.hugme.akka.beans.work.WorkCompleted;
+import br.com.hugme.akka.beans.work.WorkDomainEvent;
+import br.com.hugme.akka.beans.work.WorkFailed;
+import br.com.hugme.akka.beans.work.WorkIsDone;
+import br.com.hugme.akka.beans.work.WorkIsReady;
+import br.com.hugme.akka.beans.work.WorkResult;
+import br.com.hugme.akka.beans.work.WorkStarted;
+import br.com.hugme.akka.beans.work.WorkState;
 import br.com.hugme.akka.beans.worker.RegisterWorker;
 import br.com.hugme.akka.beans.worker.WorkerFailed;
 import br.com.hugme.akka.beans.worker.WorkerRequestsWork;
@@ -28,30 +38,27 @@ import scala.concurrent.duration.FiniteDuration;
 
 public class Master extends UntypedPersistentActor {
 
+	private final FiniteDuration workTimeout;
+	private final ActorRef mediator = DistributedPubSubExtension.get(getContext().system()).mediator();
+	private final LoggingAdapter log = Logging.getLogger(getContext().system(), this);
+	//private final Cancellable cleanupTask;
+	private HashMap<String, WorkerState> workers = new HashMap<String, WorkerState>();
+	private WorkState workState = new WorkState();
 	public static String ResultsTopic = "results";
 
 	public static Props props(FiniteDuration workTimeout) {
 		return Props.create(Master.class, workTimeout);
 	}
 
-	private final FiniteDuration workTimeout;
-	private final ActorRef mediator = DistributedPubSubExtension.get(getContext().system()).mediator();
-	private final LoggingAdapter log = Logging.getLogger(getContext().system(), this);
-	private final Cancellable cleanupTask;
-
-	private HashMap<String, WorkerState> workers = new HashMap<String, WorkerState>();
-	private WorkState workState = new WorkState();
-
 	public Master(FiniteDuration workTimeout) {
 		this.workTimeout = workTimeout;
 		ClusterReceptionistExtension.get(getContext().system()).registerService(getSelf());
-		this.cleanupTask = getContext().system().scheduler().schedule(workTimeout.div(2), workTimeout.div(2), getSelf(),
-				CleanupTick, getContext().dispatcher(), getSelf());
+		//this.cleanupTask = getContext().system().scheduler().schedule(workTimeout.div(2), workTimeout.div(2), getSelf(), CleanupTick, getContext().dispatcher(), getSelf());
 	}
 
 	@Override
 	public void postStop() {
-		cleanupTask.cancel();
+		//cleanupTask.cancel();
 	}
 
 	private void notifyWorkers() {
@@ -108,7 +115,7 @@ public class Master extends UntypedPersistentActor {
 				final WorkerState state = workers.get(workerId);
 				if (state != null && state.status.isIdle()) {
 					final Work work = workState.nextWork();
-					persist(new WorkStarted(work.workId), new Procedure<WorkStarted>() {
+					persist(new WorkStarted(work.getId()), new Procedure<WorkStarted>() {
 						public void apply(WorkStarted event) throws Exception {
 							workState = workState.updated(event);
 							log.info("Giving worker {} some work {}", workerId, event.workId);
@@ -153,7 +160,7 @@ public class Master extends UntypedPersistentActor {
 				});
 			}
 		} else if (cmd instanceof Work) {
-			final String workId = ((Work) cmd).workId;
+			final String workId = ((Work) cmd).getId();
 			// idempotent
 			if (workState.isAccepted(workId)) {
 				getSender().tell(new Ack(workId), getSelf());
@@ -162,7 +169,7 @@ public class Master extends UntypedPersistentActor {
 				persist(new WorkAccepted((Work) cmd), new Procedure<WorkAccepted>() {
 					public void apply(WorkAccepted event) throws Exception {
 						// Ack back to original sender
-						getSender().tell(new Ack(event.work.workId), getSelf());
+						getSender().tell(new Ack(event.work.getId()), getSelf());
 						workState = workState.updated(event);
 						notifyWorkers();
 					}
@@ -193,9 +200,18 @@ public class Master extends UntypedPersistentActor {
 		}
 	}
 
+	
+	
 	private void changeWorkerToIdle(String workerId, String workId) {
 		if (workers.get(workerId).status.isBusy()) {
 			workers.put(workerId, workers.get(workerId).copyWithStatus(new Idle()));
 		}
 	}
+	
+	@Override
+	public void unhandled(Object ojb) {
+		log.info("Master unhandled job: {}", ojb);
+		super.unhandled(ojb);
+	}
+
 }

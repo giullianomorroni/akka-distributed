@@ -1,20 +1,15 @@
 package br.com.hugme.akka;
 
 import akka.actor.*;
-import akka.contrib.pattern.ClusterClient;
-import akka.contrib.pattern.ClusterSingletonManager;
-import akka.dispatch.OnFailure;
-import akka.dispatch.OnSuccess;
+import akka.dispatch.*;
+import akka.persistence.journal.leveldb.*;
+import akka.contrib.pattern.*;
 import akka.pattern.Patterns;
-import akka.persistence.journal.leveldb.SharedLeveldbJournal;
-import akka.persistence.journal.leveldb.SharedLeveldbStore;
 import akka.util.Timeout;
-import br.com.hugme.akka.actors.Frontend;
+import br.com.hugme.akka.actors.Master;
+import br.com.hugme.akka.actors.SocialMonitorWorker;
 import br.com.hugme.akka.actors.WorkExecutor;
-import br.com.hugme.akka.actors.WorkProducer;
-import br.com.hugme.akka.actors.WorkResultConsumer;
 import br.com.hugme.akka.actors.Worker;
-import br.com.hugme.akka.beans.work.Master;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -33,19 +28,14 @@ public class Main {
 
 	public static void main(String[] args) throws InterruptedException {
 		startBackend(2551, "backend");
+		startBackend(2552, "backend");
 		Thread.sleep(5000);
 
-//		startBackend(2552, "backend");
-//		Thread.sleep(5000);
-
-		for (int i=3; i > 0; i--){
-			startWorker(0);
-			Thread.sleep(2000);
-		}
+		startWorker(0);
 		Thread.sleep(5000);
 
 		startFrontend(0);
-		Thread.sleep(5000);
+		//Thread.sleep(5000);
 	}
 
 	public static void startBackend(int port, String role) {
@@ -59,11 +49,8 @@ public class Main {
 	}
 
 	public static void startWorker(int port) {
-		Config conf = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + port).
-		withFallback(ConfigFactory.load("worker"));
-
+		Config conf = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + port).withFallback(ConfigFactory.load("worker"));
 		ActorSystem system = ActorSystem.create("WorkerSystem", conf);
-
 		Set<ActorSelection> initialContacts = new HashSet<ActorSelection>();
 		for (String contactAddress : conf.getStringList("contact-points")) {
 		  initialContacts.add(system.actorSelection(contactAddress + "/user/receptionist"));
@@ -75,9 +62,10 @@ public class Main {
 	public static void startFrontend(int port) {
 		Config conf = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + port).withFallback(ConfigFactory.load());
 		ActorSystem system = ActorSystem.create("ClusterSystem", conf);
-		ActorRef frontend = system.actorOf(Props.create(Frontend.class), "frontend");
-		system.actorOf(Props.create(WorkProducer.class, frontend), "producer");
-		system.actorOf(Props.create(WorkResultConsumer.class), "consumer");
+		//ActorRef frontend = system.actorOf(Props.create(Frontend.class), "frontend");
+		//system.actorOf(Props.create(WorkProducer.class, frontend), "producer");
+		system.actorOf(Props.create(SocialMonitorWorker.class));
+		//system.actorOf(Props.create(WorkResultConsumer.class), "consumer");
 	}
 
 	public static void  startupSharedJournal(final ActorSystem system, boolean startStore, final ActorPath path) {
@@ -95,6 +83,7 @@ public class Main {
 		f.onSuccess(new OnSuccess<Object>() {
 			@Override
 			public void onSuccess(Object arg0) throws Throwable {
+				System.err.println("Shared journal started at "+ path);
 				if (arg0 instanceof ActorIdentity && ((ActorIdentity) arg0).getRef() != null) {
 					SharedLeveldbJournal.setStore(((ActorIdentity) arg0).getRef(), system);
 				} else {

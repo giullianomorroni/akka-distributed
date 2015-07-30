@@ -16,6 +16,13 @@ public final class WorkState {
 	private final Set<String> doneWorkIds;
 	private final ConcurrentLinkedDeque<Work> pendingWork;
 
+	public WorkState() {
+		this.workInProgress = new HashMap<String, Work>();
+		this.acceptedWorkIds = new HashSet<String>();
+		this.doneWorkIds = new HashSet<String>();
+		this.pendingWork = new ConcurrentLinkedDeque<Work>();
+	}
+
 	public WorkState updated(WorkDomainEvent event) {
 		WorkState newState = null;
 		if (event instanceof WorkAccepted) {
@@ -32,23 +39,16 @@ public final class WorkState {
 		return newState;
 	}
 
-	public WorkState() {
-		workInProgress = new HashMap<String, Work>();
-		acceptedWorkIds = new HashSet<String>();
-		doneWorkIds = new HashSet<String>();
-		pendingWork = new ConcurrentLinkedDeque<Work>();
-	}
 
 	private WorkState(WorkState workState, WorkAccepted workAccepted) {
 		ConcurrentLinkedDeque<Work> tmp_pendingWork = new ConcurrentLinkedDeque<Work>(workState.pendingWork);
 		Set<String> tmp_acceptedWorkIds = new HashSet<String>(workState.acceptedWorkIds);
 		tmp_pendingWork.addLast(workAccepted.work);
-		tmp_acceptedWorkIds.add(workAccepted.work.workId);
+		tmp_acceptedWorkIds.add(workAccepted.work.getId());
 		workInProgress = new HashMap<String, Work>(workState.workInProgress);
 		acceptedWorkIds = tmp_acceptedWorkIds;
 		doneWorkIds = new HashSet<String>(workState.doneWorkIds);
 		pendingWork = tmp_pendingWork;
-
 	}
 
 	public WorkState(WorkState workState, WorkStarted workStarted) {
@@ -56,11 +56,10 @@ public final class WorkState {
 		Map<String, Work> tmp_workInProgress = new HashMap<String, Work>(workState.workInProgress);
 
 		Work work = tmp_pendingWork.removeFirst();
-		if (!work.workId.equals(workStarted.workId)) {
-			throw new IllegalArgumentException(
-					"WorkStarted expected workId " + work.workId + "==" + workStarted.workId);
+		if (!work.getId().equals(workStarted.workId)) {
+			throw new IllegalArgumentException( "WorkStarted expected workId " + work.getId() + "==" + workStarted.workId);
 		}
-		tmp_workInProgress.put(work.workId, work);
+		tmp_workInProgress.put(work.getId(), work);
 
 		workInProgress = tmp_workInProgress;
 		acceptedWorkIds = new HashSet<String>(workState.acceptedWorkIds);
@@ -99,12 +98,6 @@ public final class WorkState {
 		acceptedWorkIds = new HashSet<String>(workState.acceptedWorkIds);
 		doneWorkIds = new HashSet<String>(workState.doneWorkIds);
 		pendingWork = tmp_pendingWork;
-	}
-
-	public void test() {
-		for (Work work : pendingWork) {
-			System.out.println(work.job);
-		}
 	}
 
 	public String toString() {

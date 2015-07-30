@@ -11,12 +11,13 @@ public class WorkExecutor extends UntypedActor {
 
 	@Override
 	public void onReceive(Object message) {
-		if (message instanceof Integer) {
-			Integer n = (Integer) message;
-			int n2 = n.intValue() * n.intValue();
-			String result = n + " * " + n + " = " + n2;
-			log.info("Produced result {}", result);
-			getSender().tell(new WorkComplete(result), getSelf());
-		}
+		log.info("Produced result {}", message);
+		getSender().tell(new WorkComplete(message), getSelf());
 	}
+	
+	@Override
+	public void unhandled(Object message) {
+		log.info("Produced unhandled result {}", message);
+	}
+	
 }
