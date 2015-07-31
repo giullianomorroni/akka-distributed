@@ -14,7 +14,7 @@ public class WorkExecutor extends UntypedActor {
 		log.info("Produced result {}", message);
 		getSender().tell(new WorkComplete(message), getSelf());
 	}
-	
+
 	@Override
 	public void unhandled(Object message) {
 		log.info("Produced unhandled result {}", message);

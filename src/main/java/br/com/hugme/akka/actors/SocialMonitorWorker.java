@@ -34,15 +34,15 @@ public class SocialMonitorWorker extends UntypedActor {
 		ExecutionContext executionContext = getContext().system().dispatcher();
 		Scheduler scheduler = getContext().system().scheduler();
 		runnable = new TwitterMonitor(this);
-//		scheduler.schedule(
-//				FiniteDuration.Zero(),
-//				FiniteDuration.create(30, "seconds"),
-//				runnable, 
-//				executionContext);
-		scheduler.scheduleOnce(
-				FiniteDuration.create(10, "seconds"),
+		scheduler.schedule(
+				FiniteDuration.Zero(),
+				FiniteDuration.create(30, "seconds"),
 				runnable, 
 				executionContext);
+//		scheduler.scheduleOnce(
+//				FiniteDuration.create(10, "seconds"),
+//				runnable, 
+//				executionContext);
 	}
 
 	@Override

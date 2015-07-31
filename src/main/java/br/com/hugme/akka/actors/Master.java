@@ -1,20 +1,16 @@
 package br.com.hugme.akka.actors;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-
-import akka.actor.ActorRef;
-import akka.actor.Cancellable;
-import akka.actor.Props;
+import akka.actor.*;
 import akka.cluster.Cluster;
-import akka.contrib.pattern.ClusterReceptionistExtension;
-import akka.contrib.pattern.DistributedPubSubExtension;
-import akka.contrib.pattern.DistributedPubSubMediator;
+import akka.contrib.pattern.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.Procedure;
 import akka.persistence.UntypedPersistentActor;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
 import br.com.hugme.akka.beans.state.Ack;
 import br.com.hugme.akka.beans.state.Busy;
 import br.com.hugme.akka.beans.state.Idle;
@@ -41,7 +37,7 @@ public class Master extends UntypedPersistentActor {
 	private final FiniteDuration workTimeout;
 	private final ActorRef mediator = DistributedPubSubExtension.get(getContext().system()).mediator();
 	private final LoggingAdapter log = Logging.getLogger(getContext().system(), this);
-	//private final Cancellable cleanupTask;
+	private final Cancellable cleanupTask;
 	private HashMap<String, WorkerState> workers = new HashMap<String, WorkerState>();
 	private WorkState workState = new WorkState();
 	public static String ResultsTopic = "results";
@@ -51,22 +47,22 @@ public class Master extends UntypedPersistentActor {
 	}
 
 	public Master(FiniteDuration workTimeout) {
-		this.workTimeout = workTimeout;
 		ClusterReceptionistExtension.get(getContext().system()).registerService(getSelf());
-		//this.cleanupTask = getContext().system().scheduler().schedule(workTimeout.div(2), workTimeout.div(2), getSelf(), CleanupTick, getContext().dispatcher(), getSelf());
+		this.cleanupTask = getContext().system().scheduler().schedule(FiniteDuration.Zero(), FiniteDuration.create(20, "seconds"), getSelf(), CleanupTick, getContext().dispatcher(), getSelf());
+		this.workTimeout = workTimeout;
 	}
 
 	@Override
 	public void postStop() {
-		//cleanupTask.cancel();
+		cleanupTask.cancel();
 	}
 
 	private void notifyWorkers() {
 		if (workState.hasWork()) {
-			// could pick a few random instead of all
 			for (WorkerState state : workers.values()) {
-				if (state.status.isIdle())
+				if (state.status.isIdle()) {
 					state.ref.tell(WorkIsReady.getInstance(), getSelf());
+				}
 			}
 		}
 	}
@@ -82,7 +78,7 @@ public class Master extends UntypedPersistentActor {
 	public void onReceiveRecover(Object arg0) throws Exception {
 		if (arg0 instanceof WorkDomainEvent) {
 			workState = workState.updated((WorkDomainEvent) arg0);
-			log.info("Replayed {}", arg0.getClass().getSimpleName());
+			log.info("Master Answering with {}", arg0.getClass().getSimpleName());
 		}
 	}
 
@@ -93,7 +89,6 @@ public class Master extends UntypedPersistentActor {
 			}
 		}
 		return "master";
-
 	}
 
 	@Override
@@ -176,38 +171,43 @@ public class Master extends UntypedPersistentActor {
 				});
 			}
 		} else if (cmd == CleanupTick) {
-			Iterator<Map.Entry<String, WorkerState>> iterator = workers.entrySet().iterator();
-			while (iterator.hasNext()) {
-				Map.Entry<String, WorkerState> entry = iterator.next();
-				String workerId = entry.getKey();
-				WorkerState state = entry.getValue();
-				if (state.status.isBusy()) {
-					if (state.status.getDeadLine().isOverdue()) {
-						log.info("Work timed out: {}", state.status.getWorkId());
-						workers.remove(workerId);
-						persist(new WorkerTimedOut(state.status.getWorkId()),
-								new Procedure<WorkerTimedOut>() {
-									public void apply(WorkerTimedOut event) throws Exception {
-										workState = workState.updated(event);
-										notifyWorkers();
-									}
-								});
-					}
-				}
-			}
+			cleanUpWorks();
 		} else {
 			unhandled(cmd);
 		}
 	}
 
-	
-	
+	/**
+	 * 
+	 */
+	private void cleanUpWorks() {
+		Iterator<Map.Entry<String, WorkerState>> iterator = workers.entrySet().iterator();
+		while (iterator.hasNext()) {
+			Map.Entry<String, WorkerState> entry = iterator.next();
+			String workerId = entry.getKey();
+			WorkerState state = entry.getValue();
+			if (state.status.isBusy()) {
+				if (state.status.getDeadLine().isOverdue()) {
+					log.info("Work timed out: {}", state.status.getWorkId());
+					workers.remove(workerId);
+					persist(new WorkerTimedOut(state.status.getWorkId()),
+							new Procedure<WorkerTimedOut>() {
+								public void apply(WorkerTimedOut event) throws Exception {
+									workState = workState.updated(event);
+									notifyWorkers();
+								}
+							});
+				}
+			}
+		}
+	}
+
 	private void changeWorkerToIdle(String workerId, String workId) {
 		if (workers.get(workerId).status.isBusy()) {
 			workers.put(workerId, workers.get(workerId).copyWithStatus(new Idle()));
 		}
 	}
-	
+
 	@Override
 	public void unhandled(Object ojb) {
 		log.info("Master unhandled job: {}", ojb);

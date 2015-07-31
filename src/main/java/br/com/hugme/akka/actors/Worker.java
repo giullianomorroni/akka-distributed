@@ -55,32 +55,6 @@ public class Worker extends UntypedActor {
 	public void postStop() {
 		registerTask.cancel();
 	}
-
-//	@Override
-//	public SupervisorStrategy supervisorStrategy() {
-//		return new OneForOneStrategy(-1, Duration.Inf(),
-//				new Function<Throwable, Directive>() {
-//			
-//			        @Override
-//			        public Directive apply(Throwable t) {
-//			          if (t instanceof ActorInitializationException)
-//			            return stop();
-//			          else if (t instanceof DeathPactException)
-//			            return stop();
-//			          else if (t instanceof Exception) {
-//			            if (currentWorkId != null)
-//			              sendToMaster(new WorkFailed(workerId, workId()));
-//			            getContext().become(idle);
-//			            return restart();
-//			          }
-//			          else {
-//			            return escalate();
-//			          }
-//			        	return null;
-//			        }
-//
-//		});
-//	}
  
 	public void onReceive(Object message) {
 		log.info("Worker Got work: {}", message);
@@ -138,7 +112,6 @@ public class Worker extends UntypedActor {
 			}
 		};
 	}
-
 
 	@Override
 	public void unhandled(Object message) {

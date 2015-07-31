@@ -39,7 +39,6 @@ public final class WorkState {
 		return newState;
 	}
 
-
 	private WorkState(WorkState workState, WorkAccepted workAccepted) {
 		ConcurrentLinkedDeque<Work> tmp_pendingWork = new ConcurrentLinkedDeque<Work>(workState.pendingWork);
 		Set<String> tmp_acceptedWorkIds = new HashSet<String>(workState.acceptedWorkIds);

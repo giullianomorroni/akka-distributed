@@ -15,4 +15,5 @@
 project/boot
 project/target
 target/
+journal/
 /logs

@@ -13,9 +13,7 @@ public class RegisterWorker implements Serializable {
 
     @Override
     public String toString() {
-      return "RegisterWorker{" +
-        "workerId='" + workerId + '\'' +
-        '}';
+      return "RegisterWorker{" + "workerId='" + workerId + '\'' + '}';
     }
 
 }
