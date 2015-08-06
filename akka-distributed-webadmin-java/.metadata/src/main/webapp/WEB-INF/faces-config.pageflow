@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pageflow:Pageflow xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:pageflow="http://www.sybase.com/suade/pageflow" id="pf14388873830640" configfile="/akka-distributed-webadmin-java/src/main/webapp/WEB-INF/faces-config.xml">
+  <nodes xsi:type="pageflow:PFPage" name="configs.xhtml" x="122" y="178" id="pf14388875443315" referenceLink="//@navigationRule.0/@fromViewId|" outlinks="pf14388875443316 pf14388901504920 pf14388901504921" path="/configs.xhtml"/>
+  <nodes xsi:type="pageflow:PFPage" name="configs.jsf" x="338" y="178" id="pf14388875443318" referenceLink="//@navigationRule.0/@navigationCase.2/@toViewId|" inlinks="pf14388875443316 pf14388901504920 pf14388901504921" path="/configs.jsf"/>
+  <links id="pf14388875443316" target="pf14388875443318" source="pf14388875443315" outcome="success" fromaction="#{configBean.startWorker}"/>
+  <links id="pf14388901504920" target="pf14388875443318" source="pf14388875443315" outcome="success" fromaction="#{configBean.startCluster}"/>
+  <links id="pf14388901504921" target="pf14388875443318" source="pf14388875443315" outcome="success" fromaction="#{configBean.startSocialMonitors}"/>
+</pageflow:Pageflow>

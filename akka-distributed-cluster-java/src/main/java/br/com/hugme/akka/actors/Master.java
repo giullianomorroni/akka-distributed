@@ -7,9 +7,17 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.Procedure;
 import akka.persistence.UntypedPersistentActor;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.ConfigList;
+import com.typesafe.config.ConfigValue;
 
 import br.com.hugme.akka.beans.state.Ack;
 import br.com.hugme.akka.beans.state.Busy;
@@ -211,6 +219,18 @@ public class Master extends UntypedPersistentActor {
 	public void unhandled(Object ojb) {
 		log.info("Master unhandled job: {}", ojb);
 		super.unhandled(ojb);
+	}
+
+	public static List<String> configs() {
+		Config load = ConfigFactory.load("application");
+		Config akka = load.getConfig("akka");
+		Config cluster = akka.getConfig("cluster");
+		ConfigList nodes = cluster.getList("seed-nodes");
+		List<String> values = new ArrayList<String>();
+		for(ConfigValue n : nodes){
+			values.add(String.valueOf(n));
+		}
+		return values;
 	}
 
 }

@@ -7,10 +7,10 @@
 	<packaging>pom</packaging>
 
 	<modules>
-		<module>../akka-distributed-beans-java</module>
-		<module>../akka-distributed-cluster-java</module>
-		<module>../akka-distributed-workers-java</module>
-		<module>../akka-distributed-webadmin-java</module>
+		<module>akka-distributed-beans-java</module>
+		<module>akka-distributed-cluster-java</module>
+		<module>akka-distributed-workers-java</module>
+		<module>akka-distributed-webadmin-java</module>
 	</modules>
 
 	<build>

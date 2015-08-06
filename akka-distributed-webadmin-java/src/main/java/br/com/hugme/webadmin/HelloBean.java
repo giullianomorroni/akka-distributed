@@ -20,7 +20,7 @@ public class HelloBean implements Serializable {
 	public void setName(String name) {
 		this.name = name;
 	}
-	
+
 	public String getSayWelcome(){
 		//check if null?
 		if("".equals(name) || name ==null){
@@ -29,5 +29,5 @@ public class HelloBean implements Serializable {
 			return "Ajax message : Welcome " + name;
 		}
 	}
-	
+
 }
