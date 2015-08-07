@@ -55,7 +55,7 @@ public class Master extends UntypedPersistentActor {
 
 	public Master(FiniteDuration workTimeout) {
 		ClusterReceptionistExtension.get(getContext().system()).registerService(getSelf());
-		this.cleanupTask = getContext().system().scheduler().schedule(FiniteDuration.Zero(), FiniteDuration.create(20, "seconds"), getSelf(), CleanupTick, getContext().dispatcher(), getSelf());
+		this.cleanupTask = getContext().system().scheduler().schedule(FiniteDuration.Zero(), FiniteDuration.create(20, "seconds"), getSelf(), cleanup, getContext().dispatcher(), getSelf());
 		this.workTimeout = workTimeout;
 	}
 
@@ -74,7 +74,7 @@ public class Master extends UntypedPersistentActor {
 		}
 	}
 
-	public static final Object CleanupTick = new Object() {
+	public static final Object cleanup = new Object() {
 		@Override
 		public String toString() {
 			return "CleanupTick";
@@ -111,7 +111,9 @@ public class Master extends UntypedPersistentActor {
 					getSender().tell(WorkIsReady.getInstance(), getSelf());
 				}
 			}
-		} else if (cmd instanceof WorkerRequestsWork) {
+		}
+
+		else if (cmd instanceof WorkerRequestsWork) {
 			if (workState.hasWork()) {
 				final String workerId = ((WorkerRequestsWork) cmd).workerId;
 				final WorkerState state = workers.get(workerId);
@@ -123,18 +125,20 @@ public class Master extends UntypedPersistentActor {
 							log.info("Giving worker {} some work {}", workerId, event.workId);
 							workers.put(workerId, state.copyWithStatus(new Busy(event.workId, workTimeout.fromNow())));
 							getSender().tell(work, getSelf());
-
 						}
 					});
 				}
 			}
-		} else if (cmd instanceof WorkIsDone) {
+		}
+
+		else if (cmd instanceof WorkIsDone) {
 			final String workerId = ((WorkIsDone) cmd).workerId;
 			final String workId = ((WorkIsDone) cmd).workId;
 			if (workState.isDone(workId)) {
 				getSender().tell(new Ack(workId), getSelf());
 			} else if (!workState.isInProgress(workId)) {
 				log.info("Work {} not in progress, reported as done by worker {}", workId, workerId);
+				//FIXME quando chega aqui fica em loop
 			} else {
 				log.info("Work {} is done by worker {}", workId, workerId);
 				changeWorkerToIdle(workerId, workId);
@@ -148,7 +152,9 @@ public class Master extends UntypedPersistentActor {
 							}
 						});
 			}
-		} else if (cmd instanceof WorkFailed) {
+		}
+
+		else if (cmd instanceof WorkFailed) {
 			final String workId = ((WorkFailed) cmd).workId;
 			final String workerId = ((WorkFailed) cmd).workerId;
 			if (workState.isInProgress(workId)) {
@@ -161,7 +167,9 @@ public class Master extends UntypedPersistentActor {
 					}
 				});
 			}
-		} else if (cmd instanceof Work) {
+		}
+
+		else if (cmd instanceof Work) {
 			final String workId = ((Work) cmd).getId();
 			// idempotent
 			if (workState.isAccepted(workId)) {
@@ -177,11 +185,14 @@ public class Master extends UntypedPersistentActor {
 					}
 				});
 			}
-		} else if (cmd == CleanupTick) {
+		}
+
+		else if (cmd == cleanup) {
 			cleanUpWorks();
 		} else {
 			unhandled(cmd);
 		}
+
 	}
 
 	/**

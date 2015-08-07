@@ -18,24 +18,29 @@ public final class WorkState {
 
 	public WorkState() {
 		this.workInProgress = new HashMap<String, Work>();
+		this.pendingWork = new ConcurrentLinkedDeque<Work>();
 		this.acceptedWorkIds = new HashSet<String>();
 		this.doneWorkIds = new HashSet<String>();
-		this.pendingWork = new ConcurrentLinkedDeque<Work>();
 	}
 
 	public WorkState updated(WorkDomainEvent event) {
 		WorkState newState = null;
+		//success
 		if (event instanceof WorkAccepted) {
 			return new WorkState(this, (WorkAccepted) event);
 		} else if (event instanceof WorkStarted) {
 			return new WorkState(this, (WorkStarted) event);
 		} else if (event instanceof WorkCompleted) {
 			return new WorkState(this, (WorkCompleted) event);
-		} else if (event instanceof WorkerFailed) {
+		}
+
+		//failed
+		if (event instanceof WorkerFailed) {
 			return new WorkState(this, (WorkerFailed) event);
 		} else if (event instanceof WorkerTimedOut) {
 			return new WorkState(this, (WorkerTimedOut) event);
 		}
+
 		return newState;
 	}
 

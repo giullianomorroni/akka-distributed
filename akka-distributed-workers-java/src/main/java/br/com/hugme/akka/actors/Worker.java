@@ -63,16 +63,17 @@ public class Worker extends UntypedActor {
 
 	private final Procedure<Object> idle = new Procedure<Object>() {
 		public void apply(Object message) {
-			if (message instanceof WorkIsReady)
+			if (message instanceof WorkIsReady) {
 				sendToMaster(new WorkerRequestsWork(workerId));
-			else if (message instanceof Work) {
+			} else if (message instanceof Work) {
 				Work work = (Work) message;
 				log.info("Got work: {}", work.getMessage());
 				currentWorkId = work.getId();
 				workExecutor.tell(work, getSelf());
 				getContext().become(working);
-			} else
+			} else {
 				unhandled(message);
+			}
 		}
 	};
 

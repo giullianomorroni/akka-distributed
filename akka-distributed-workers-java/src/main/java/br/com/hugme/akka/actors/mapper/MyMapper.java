@@ -12,5 +12,5 @@ public class MyMapper extends akka.dispatch.Mapper<Object, Object> {
 		else
 			return super.apply(msg);
 	}
-	
+
 }
